@@ -1,0 +1,180 @@
+﻿
+--car data
+
+Create table CarMake (
+    MakeId int identity(1,1) primary key,
+    MakeName nvarchar(100) NOT NULL,
+	constraint uq_makename unique (MakeName)
+
+);
+
+create table CarModel(
+   ModelId int identity(1,1) primary key,
+   ModelName nvarchar(100) NOT NULL,
+   MakeId INT NOT NULL,
+   constraint fk_model_make foreign key (MakeId) references CarMake(MakeId),
+   constraint uq_model_make unique (MakeId, ModelName)
+
+);
+
+create table CarSubModel(
+   SubModelId int Identity(1,1) primary key,
+   SubModelName nvarchar(100) NOT NULL,
+   ModelId INT NOT NULL,
+   constraint fk_submodel_model foreign key (ModelId) references CarModel(ModelId),
+   constraint uq_modelid_submodelname unique (ModelId, SubModelName)
+)
+
+create table ZipCodes (
+    ZipCodeId int identity(1,1) not null primary key,
+	ZipCode nvarchar(10) not null,
+	constraint uq_zipcode unique (ZipCode)
+
+)
+
+create table Car (
+    CarId int identity(1,1) NOT NULL primary key,
+	SubModelId int NOT NULL,
+	CarYear smallint NOT NULL,       
+	ZipCodeId int not null,
+	constraint fk_car_submodel foreign key (SubModelId) references CarSubModel(SubModelId),
+	constraint ck_caryear check (CarYear BETWEEN 1900 AND YEAR(GETDATE()) + 1),
+	constraint fk_car_zipcode foreign key (ZipCodeId) references ZipCodes(ZipCodeId)
+)
+
+
+
+
+create table Buyer (
+    BuyerId int identity(1,1) NOT NULL primary key,
+	BuyerName nvarchar(200) NOT NULL,
+	BuyerEmail nvarchar(100) NULL,
+	BuyerPhone nvarchar(20) NULL,
+	CreatedAt Datetime2 not null default sysdatetime()
+)
+
+
+
+create table BuyerCoverageZipCodes (
+    BuyerId int not null,
+	ZipCodeId int not null,
+	CreatedAt Datetime2 not null default sysdatetime(),
+	constraint pk_buyercoverage_zipcodes primary key (BuyerId,ZipCodeId),
+	constraint fk_coverage_buyer foreign key (BuyerId) references Buyer(BuyerId) ON DELETE CASCADE,
+	constraint fk_coverage_zipcodes foreign key (ZipCodeId) references ZipCodes(ZipCodeId) ON DELETE CASCADE
+
+)
+
+
+create table BuyerQuoteRule (
+    RuleId int identity(1,1) primary key,
+    BuyerId int not null,
+    MakeId int null,
+    ModelId int null,
+    SubModelId int null,
+    YearFrom smallint null,
+    YearTo smallint null,
+    Amount decimal(10,2) not null,
+    RulePriority int not null default 100,    
+    IsActive bit not null default 1,
+    EffectiveFrom date null,
+    EffectiveTo date null,
+    constraint fk_bqr_buyer foreign key (BuyerId) references Buyer(BuyerId) on delete cascade,
+    constraint fk_bqr_make foreign key (MakeId) references CarMake(MakeId),
+    constraint fk_bqr_model foreign key (ModelId) references CarModel(ModelId),
+    constraint fk_bqr_submodel foreign key (SubModelId) references CarSubModel(SubModelId),
+    constraint ck_bqr_yearrange check (
+        yearfrom is null or yearto is null or yearfrom <= yearto
+    ),
+	constraint ck_bqr_effectivefromto check (
+        EffectiveFrom is null or EffectiveTo is null OR EffectiveFrom <= EffectiveTo
+    ),
+    constraint ck_bqr_amount_positive check (amount > 0)
+)
+
+
+
+
+--Quotes
+
+create table CarCurrentQuote (
+    CarCurrentQuoteId int identity(1,1) primary key,
+    CarId   int NOT NULL,
+    BuyerId int NOT NULL,
+    Amount  DECIMAL(10,2) NOT NULL,
+    ChosenAt datetime2 NOT NULL default SYSDATETIME(),
+    ChosenBy nvarchar(100) NULL,
+    constraint FK_CCQ_Car   foreign key (CarId)  references Car(CarId)     on delete cascade,
+    constraint FK_CCQ_Buyer foreign key (BuyerId) references Buyer(BuyerId)  on delete cascade,
+    constraint CK_CCQ_Amount_Positive check (Amount > 0)
+);
+
+
+
+
+--statuses
+
+CREATE TABLE StatusType (
+    StatusId   INT IDENTITY(1,1) PRIMARY KEY,
+    StatusName NVARCHAR(50) NOT NULL,
+    IsDateRequired BIT NOT NULL DEFAULT 0,
+    CONSTRAINT UQ_StatusType_Name UNIQUE (StatusName)
+);
+
+
+create table CarStatus (
+    CarStatusId int identity(1,1) primary key,
+    CarId     int NOT NULL,
+    StatusId  int NOT NULL,
+    StatusDate datetime2 NULL,         
+    ChangedBy nvarchar(100) NULL,
+    ChangedAt datetime2 NOT NULL DEFAULT SYSDATETIME(),
+    IsCurrent bit NOT NULL default 0,
+    constraint FK_CS_Car    foreign key (CarId)    references Car(CarId)       on delete cascade,
+    constraint FK_CS_Status foreign key (StatusId) references StatusType(StatusId) on delete cascade
+)
+
+
+--INDEX
+
+
+create unique index UX_Buyer_BuyerEmail
+on Buyer(BuyerEmail)
+where BuyerEmail is not null;
+
+
+--improving performance of search
+
+create index IX_Car_SubModelId on Car(SubModelId);
+create index IX_Car_ZipCodeId  ON Car(ZipCodeId);
+
+
+create index IX_BuyerQuoteRule_Match
+on BuyerQuoteRule (
+    BuyerId,
+    IsActive,
+    EffectiveFrom,
+    EffectiveTo,
+    RulePriority,
+    MakeId,
+    ModelId,
+    SubModelId,
+    YearFrom,
+    YearTo
+)
+include (Amount);
+
+create index IX_CarSubModel_ModelId ON CarSubModel(ModelId);
+
+
+create index IX_CarModel_MakeId ON CarModel(MakeId);
+
+create index IX_BuyerCoverageZipCodes_ZipCodeId on BuyerCoverageZipCodes (ZipCodeId);
+
+-- one current guaranteed
+CREATE UNIQUE INDEX UX_CarCurrentQuote_OnePerCar ON CarCurrentQuote(CarId);
+
+-- Solo 1 estado actual por auto
+create unique index UX_CarStatus_CurrentPerCar on CarStatus(CarId) where IsCurrent = 1;
+
+

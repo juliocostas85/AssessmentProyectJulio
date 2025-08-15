@@ -1,0 +1,152 @@
+1)
+SQL:
+DECLARE @CarId INT = 1; -- <- cambia el id
+
+SELECT
+    c.CarId,
+    mk.MakeName,
+    mdl.ModelName,
+    sm.SubModelName,
+    c.CarYear,
+    z.ZipCode,
+    b.BuyerName AS CurrentBuyerName,
+    cq.Amount AS CurrentBuyerQuote,
+    st.StatusName AS CurrentStatusName,
+    cs.StatusDate AS CurrentStatusDate
+FROM Car c
+JOIN CarSubModel sm ON sm.SubModelId = c.SubModelId
+JOIN CarModel  mdl ON mdl.ModelId   = sm.ModelId
+JOIN CarMake mk ON mk.MakeId     = mdl.MakeId
+JOIN ZipCodes z ON z.ZipCodeId   = c.ZipCodeId
+LEFT JOIN CarCurrentQuote cq ON cq.CarId = c.CarId
+LEFT JOIN Buyer b  ON b.BuyerId = cq.BuyerId
+LEFT JOIN CarStatus cs  ON cs.CarId = c.CarId AND cs.IsCurrent = 1
+LEFT JOIN StatusType st  ON st.StatusId = cs.StatusId
+WHERE c.CarId = @CarId;
+
+
+
+
+
+Entity Framework version:
+
+var result = await ctx.Car
+    .AsNoTracking()
+    .Where(c => c.CarId == carId)
+    .Select(c => new CarSummaryDto
+    {
+        CarId             = c.CarId,
+        MakeName          = c.SubModel.Model.Make.MakeName,
+        ModelName         = c.SubModel.Model.ModelName,
+        SubModelName      = c.SubModel.SubModelName,
+        CarYear           = c.CarYear,
+        ZipCode           = c.ZipCode.ZipCode,
+        CurrentBuyerName  = c.CarCurrentQuote != null ? c.CarCurrentQuote.Buyer.BuyerName : null,
+        CurrentBuyerQuote = c.CarCurrentQuote != null ? (decimal?)c.CarCurrentQuote.Amount : null,
+        CurrentStatusName = c.CarStatus.Where(s => s.IsCurrent).Select(s => s.StatusType.StatusName).FirstOrDefault(),
+        CurrentStatusDate = c.CarStatus.Where(s => s.IsCurrent).Select(s => (DateTime?)s.StatusDate).FirstOrDefault()
+    })
+    .SingleOrDefaultAsync();
+	
+	
+	
+2)
+I would use cache but for example if we use a memory cache on our API 
+we could have problems because of the instances or if our application is turned off (the data on memory cache are lost) 
+so we could use a distributed type of cache for example on a db on redis
+	
+
+3)
+
+Analyze the following method and make changes to make it better. Explain your 
+changes. 
+ 
+ 
+		   
+public async Task UpdateCustomersBalanceByInvoicesAsync(List<Invoice> invoices)
+{
+    if (invoices == null || invoices.Count == 0)
+        return;
+
+    var deltas = invoices
+        .Where(i => i?.CustomerId != null)
+        .GroupBy(i => i!.CustomerId!.Value)
+        .ToDictionary(g => g.Key, g => g.Sum(i => i.Total));
+
+    if (deltas.Count == 0)
+        return;
+
+    var customerIds = deltas.Keys.ToList();
+
+    await using var tx = await dbContext.Database.BeginTransactionAsync();
+
+    var customers = await dbContext.Customers
+        .Where(c => customerIds.Contains(c.Id))
+        .ToListAsync();
+
+    foreach (var c in customers)
+    {
+        if (deltas.TryGetValue(c.Id, out var delta))
+            c.Balance -= delta;
+    }
+
+    await dbContext.SaveChangesAsync();
+    await tx.CommitAsync();
+}
+		   
+		   
+4)
+public async Task<List<OrderDTO>> GetOrders(
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    List<int> customerIds,
+    List<int> statusIds,
+    bool? isActive)
+{
+    
+    var filterCustomers = customerIds != null && customerIds.Count > 0;
+    var filterStatuses  = statusIds   != null && statusIds.Count   > 0;
+
+
+    var query = dbContext.Orders
+        .AsNoTracking()
+        .AsQueryable();
+
+    if (dateFrom.HasValue)
+        query = query.Where(o => o.OrderDate >= dateFrom.Value);
+
+	if (dateTo.HasValue)
+        query = query.Where(o => o.OrderDate <= dateTo.Value);
+
+    if (filterCustomers)
+        query = query.Where(o => customerIds.Contains(o.CustomerId));
+
+    if (filterStatuses)
+        query = query.Where(o => statusIds.Contains(o.StatusId));
+
+    if (isActive.HasValue)
+        query = query.Where(o => o.IsActive == isActive.Value);
+
+   
+    var results = await query
+        .Select(o => new OrderDTO
+        {
+            OrderId      = o.Id,
+            OrderDate    = o.OrderDate,
+            CustomerId   = o.CustomerId,
+            CustomerName = o.Customer.Name,
+            StatusId     = o.StatusId,
+            StatusName   = o.Status.Name,
+            IsActive     = o.IsActive,
+            Total        = o.Total
+        })
+        .OrderBy(x => x.OrderId)
+        .ToListAsync();
+
+    return results;
+}
+
+5)
+I understand the requirement and I’m familiar with regex usage for simpler validations, but I haven’t built complex patterns like this from scratch. 
+I would probably approach it with research and testing tools, but I’m not fully fluent in writing advanced regex without references
+

@@ -1,0 +1,103 @@
+﻿
+/* Status:
+INSERT INTO StatusType (StatusName, IsDateRequired)
+VALUES ('Pending Acceptance', 0), ('Accepted', 0), ('Picked Up', 1);
+*/
+
+
+
+
+INSERT INTO CarMake (MakeName)
+VALUES ('Toyota'), ('Ford'), ('Honda');
+
+INSERT INTO CarModel (ModelName, MakeId)
+VALUES ('Corolla', 1), ('Hilux', 1),
+       ('Fiesta', 2), ('Focus', 2),
+       ('Civic', 3), ('CR-V', 3);
+
+INSERT INTO CarSubModel (SubModelName, ModelId)
+VALUES ('Base', 1), ('XLE', 1),          -- Corolla
+       ('SR5', 2), ('Limited', 2),      -- Hilux
+       ('S', 3), ('Titanium', 4),       -- Fiesta, Focus
+       ('LX', 5), ('EX', 6);            -- Civic, CR-V
+
+
+INSERT INTO ZipCodes (ZipCode)
+VALUES ('1000'), ('1001'), ('1002'), ('2000'), ('2001');
+
+
+
+INSERT INTO Car (SubModelId, CarYear, ZipCodeId)
+VALUES 
+  (1, 2020, 1), -- Corolla Base en 1000
+  (2, 2022, 1), -- Corolla XLE en 1000
+  (3, 2019, 2), -- Hilux SR5 en 1001
+  (5, 2021, 3), -- Fiesta S en 1002
+  (7, 2018, 4); -- Civic LX en 2000
+
+
+
+INSERT INTO Buyer (BuyerName, BuyerEmail, BuyerPhone)
+VALUES 
+  ('Buyer ABC', 'abc@buyers.com', '111-1111'),
+  ('Buyer XYZ', 'xyz@buyers.com', '222-2222'),
+  ('Buyer AutoMax', NULL, '333-3333');
+
+
+INSERT INTO BuyerCoverageZipCodes (BuyerId, ZipCodeId)
+VALUES 
+  (1, 1), (1, 2), (1, 3),         -- ABC cubre 1000,1001,1002
+  (2, 1), (2, 4),                 -- XYZ cubre 1000,2000
+  (3, 3), (3, 4), (3, 5);         -- AutoMax cubre 1002,2000,2001
+
+
+INSERT INTO BuyerQuoteRule 
+(BuyerId, MakeId, ModelId, SubModelId, YearFrom, YearTo, Amount, RulePriority, IsActive)
+VALUES
+  -- Buyer ABC: precio genérico para cualquier auto
+  (1, NULL, NULL, NULL, NULL, NULL, 500.00, 100, 1),
+  -- Buyer ABC: mejor precio para Toyota Corolla 2020+
+  (1, 1, 1, NULL, 2020, NULL, 700.00, 50, 1),
+
+  -- Buyer XYZ: precio solo para Ford
+  (2, 2, NULL, NULL, NULL, NULL, 600.00, 100, 1),
+  -- Buyer XYZ: precio premium para Focus Titanium
+  (2, 2, 4, 6, NULL, NULL, 750.00, 80, 1),
+
+  -- Buyer AutoMax: genérico pero con prioridad baja
+  (3, NULL, NULL, NULL, NULL, NULL, 400.00, 120, 1);
+
+
+
+INSERT INTO CarCurrentQuote (CarId, BuyerId, Amount, ChosenBy)
+VALUES 
+  (1, 1, 700.00, 'System'),  -- Corolla Base → Buyer ABC
+  (2, 1, 700.00, 'System'),  -- Corolla XLE → Buyer ABC
+  (3, 1, 500.00, 'System'),  -- Hilux SR5 → Buyer ABC
+  (4, 2, 600.00, 'System'),  -- Fiesta S  → Buyer XYZ
+  (5, 3, 400.00, 'System');  -- Civic LX  → Buyer AutoMax
+
+
+
+
+INSERT INTO CarStatus (CarId, StatusId, StatusDate, ChangedBy, IsCurrent)
+VALUES
+  -- Car 1: Corolla Base, estado actual Accepted
+  (1, 1, NULL, 'Admin', 0),  -- Pending Acceptance
+  (1, 2, NULL, 'Admin', 1),  -- Accepted
+
+  -- Car 2: Corolla XLE, Picked Up
+  (2, 1, NULL, 'Admin', 0),
+  (2, 3, '2025-08-01', 'Admin', 1),
+
+  -- Car 3: Hilux SR5, Pending Acceptance
+  (3, 1, NULL, 'Admin', 1),
+
+  -- Car 4: Fiesta S, Accepted
+  (4, 1, NULL, 'Admin', 0),
+  (4, 2, NULL, 'Admin', 1),
+
+  -- Car 5: Civic LX, Picked Up
+  (5, 1, NULL, 'Admin', 0),
+  (5, 3, '2025-08-05', 'Admin', 1);
+
