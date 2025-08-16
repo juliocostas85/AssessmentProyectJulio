@@ -1,6 +1,6 @@
 1)
 SQL:
-DECLARE @CarId INT = 1; -- <- cambia el id
+DECLARE @CarId INT = 1; 
 
 SELECT
     c.CarId,
