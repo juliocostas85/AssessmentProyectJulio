@@ -147,8 +147,7 @@ public async Task<List<OrderDTO>> GetOrders(
     return results;
 }
 
-5)
-I understand the requirement and I’m familiar with regex usage for simpler validations, but I haven’t built complex patterns like this from scratch. 
+5)I understand the requirement and I’m familiar with regex usage for simpler validations, but I haven’t built complex patterns like this from scratch. 
 I would probably approach it with research and testing tools, but I’m not fully fluent in writing advanced regex without references.
 
 6) Testing: I decided to create a test for point 4 instead of 5.
