@@ -54,7 +54,7 @@ var result = await ctx.Car
 I would use cache but for example if we use a memory cache on our API 
 but we could face problems if we use in-memory cache because multiple instances of app
 or if the app is restarted the data would be lost, so we could implement distributed cache
-for example on a redis database 
+for example on a redis database.
 	
 
 3)
@@ -149,5 +149,7 @@ public async Task<List<OrderDTO>> GetOrders(
 
 5)
 I understand the requirement and I’m familiar with regex usage for simpler validations, but I haven’t built complex patterns like this from scratch. 
-I would probably approach it with research and testing tools, but I’m not fully fluent in writing advanced regex without references
+I would probably approach it with research and testing tools, but I’m not fully fluent in writing advanced regex without references.
+
+6) Testing: I decided to create a test for point 4 instead of 5.
 
