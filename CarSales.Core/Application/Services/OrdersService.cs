@@ -2,7 +2,7 @@
 using CarSales.Core.Infrastructure.Context;
 using Microsoft.EntityFrameworkCore;
 
-namespace CarSales.Core.Infrastructure.Services
+namespace CarSales.Core.Application.Services
 {
     public class OrdersService
     {

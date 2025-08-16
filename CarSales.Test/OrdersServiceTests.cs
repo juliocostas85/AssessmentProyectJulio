@@ -1,7 +1,7 @@
 ﻿
 using CarSales.Core.Domain.Entities;
 using CarSales.Core.Infrastructure.Context;
-using CarSales.Core.Infrastructure.Services;
+using CarSales.Core.Application.Services;
 using Microsoft.EntityFrameworkCore;
 
 
