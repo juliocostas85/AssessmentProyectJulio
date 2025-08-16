@@ -201,7 +201,7 @@ create index IX_BuyerCoverageZipCodes_ZipCodeId on BuyerCoverageZipCodes (ZipCod
 -- one current guaranteed
 CREATE UNIQUE INDEX UX_CarCurrentQuote_OnePerCar ON CarCurrentQuote(CarId);
 
--- on current status per car
+-- one current status per car
 create unique index UX_CarStatus_CurrentPerCar on CarStatus(CarId) where IsCurrent = 1;
 
 
