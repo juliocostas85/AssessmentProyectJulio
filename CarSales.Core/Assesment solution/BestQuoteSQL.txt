@@ -1,0 +1,110 @@
+﻿ALTER PROCEDURE [dbo].[usp_SelectBestQuoteForCar]
+    @CarId     INT,
+    @ChosenBy  NVARCHAR(100) = N'System'
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    BEGIN TRY
+        BEGIN TRAN;
+
+        -- Car context variables
+        DECLARE @MakeId INT, @ModelId INT, @SubModelId INT, @CarYear SMALLINT, @ZipCodeId INT;
+
+        SELECT
+            @SubModelId = c.SubModelId,
+            @CarYear    = c.CarYear,
+            @ZipCodeId  = c.ZipCodeId
+        FROM dbo.Car c
+        WHERE c.CarId = @CarId;
+
+        IF @SubModelId IS NULL
+        BEGIN
+            ROLLBACK;
+            RETURN;
+        END;
+
+        -- Bring model
+        SELECT @ModelId = m.ModelId
+        FROM dbo.CarSubModel sm
+        JOIN dbo.CarModel m ON m.ModelId = sm.ModelId
+        WHERE sm.SubModelId = @SubModelId;
+
+        -- Bring make
+        SELECT @MakeId = mk.MakeId
+        FROM dbo.CarModel m
+        JOIN dbo.CarMake mk ON mk.MakeId = m.MakeId
+        WHERE m.ModelId = @ModelId;
+
+       
+        DECLARE @Best TABLE (CarId INT, BuyerId INT, Amount DECIMAL(10,2));
+
+       
+        INSERT INTO @Best (CarId, BuyerId, Amount)
+        SELECT TOP (1)
+            @CarId,
+            b.BuyerId,
+            r.Amount
+        FROM dbo.BuyerCoverageZipCodes AS cov
+        JOIN dbo.Buyer AS b
+             ON b.BuyerId = cov.BuyerId
+        JOIN dbo.BuyerQuoteRule AS r
+             ON r.BuyerId = b.BuyerId
+        WHERE cov.ZipCodeId = @ZipCodeId
+          AND r.IsActive = 1
+          AND (r.EffectiveFrom IS NULL OR r.EffectiveFrom <= SYSDATETIME())
+          AND (r.EffectiveTo   IS NULL OR r.EffectiveTo   >= SYSDATETIME())
+          AND (r.MakeId     IS NULL OR r.MakeId     = @MakeId)
+          AND (r.ModelId    IS NULL OR r.ModelId    = @ModelId)
+          AND (r.SubModelId IS NULL OR r.SubModelId = @SubModelId)
+          AND (r.YearFrom   IS NULL OR r.YearFrom   <= @CarYear)
+          AND (r.YearTo     IS NULL OR r.YearTo     >= @CarYear)
+       
+          AND (
+                
+                NOT EXISTS (
+                    SELECT 1
+                    FROM dbo.BuyerQuoteRuleZip rz
+                    WHERE rz.RuleId = r.RuleId
+                )
+              
+                OR EXISTS (
+                    SELECT 1
+                    FROM dbo.BuyerQuoteRuleZip rz
+                    WHERE rz.RuleId = r.RuleId
+                      AND rz.ZipCodeId = @ZipCodeId
+                )
+              )
+        ORDER BY r.RulePriority ASC, r.Amount DESC, b.BuyerId ASC;
+
+    
+        IF EXISTS (SELECT 1 FROM @Best)
+        BEGIN
+            IF EXISTS (SELECT 1 FROM dbo.CarCurrentQuote WHERE CarId = @CarId)
+            BEGIN
+                UPDATE ccq
+                   SET BuyerId  = b.BuyerId,
+                       Amount   = b.Amount,
+                       ChosenAt = SYSDATETIME(),
+                       ChosenBy = @ChosenBy
+                FROM dbo.CarCurrentQuote AS ccq
+                JOIN @Best AS b ON b.CarId = ccq.CarId
+                WHERE ccq.CarId = @CarId;
+            END
+            ELSE
+            BEGIN
+                INSERT INTO dbo.CarCurrentQuote (CarId, BuyerId, Amount, ChosenAt, ChosenBy)
+                SELECT CarId, BuyerId, Amount, SYSDATETIME(), @ChosenBy
+                FROM @Best;
+            END
+        END
+        
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH
+END
+GO

@@ -66,6 +66,7 @@ create table BuyerCoverageZipCodes (
 )
 
 
+
 create table BuyerQuoteRule (
     RuleId int identity(1,1) primary key,
     BuyerId int not null,
@@ -92,6 +93,32 @@ create table BuyerQuoteRule (
     constraint ck_bqr_amount_positive check (amount > 0)
 )
 
+CREATE TABLE dbo.BuyerQuoteRuleZip
+(
+    RuleId     INT         NOT NULL,
+    BuyerId    INT         NOT NULL,   
+    ZipCodeId  INT         NOT NULL,
+    CreatedAt  DATETIME2   NOT NULL DEFAULT SYSUTCDATETIME(),
+
+    CONSTRAINT PK_BuyerQuoteRuleZip
+        PRIMARY KEY (RuleId, ZipCodeId),
+
+    
+    CONSTRAINT FK_BQRZ_RuleBuyer
+        FOREIGN KEY (RuleId, BuyerId)
+        REFERENCES dbo.BuyerQuoteRule (RuleId, BuyerId)
+        ON DELETE CASCADE,
+
+    
+    CONSTRAINT FK_BQRZ_Zip
+        FOREIGN KEY (ZipCodeId)
+        REFERENCES dbo.ZipCodes (ZipCodeId),
+
+    
+    CONSTRAINT FK_BQRZ_Coverage
+        FOREIGN KEY (BuyerId, ZipCodeId)
+        REFERENCES dbo.BuyerCoverageZipCodes (BuyerId, ZipCodeId)
+);
 
 
 
@@ -174,7 +201,19 @@ create index IX_BuyerCoverageZipCodes_ZipCodeId on BuyerCoverageZipCodes (ZipCod
 -- one current guaranteed
 CREATE UNIQUE INDEX UX_CarCurrentQuote_OnePerCar ON CarCurrentQuote(CarId);
 
--- Solo 1 estado actual por auto
+-- on current status per car
 create unique index UX_CarStatus_CurrentPerCar on CarStatus(CarId) where IsCurrent = 1;
 
 
+CREATE INDEX IX_BQRZ_Zip ON BuyerQuoteRuleZip(ZipCodeId, RuleId);
+
+
+CREATE INDEX IX_BuyerQuoteRuleZip_Zip
+ON dbo.BuyerQuoteRuleZip (ZipCodeId)
+INCLUDE (RuleId, BuyerId, CreatedAt);
+GO
+
+
+CREATE INDEX IX_BuyerQuoteRuleZip_Buyer
+ON dbo.BuyerQuoteRuleZip (BuyerId, ZipCodeId);
+GO

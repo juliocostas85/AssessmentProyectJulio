@@ -52,8 +52,9 @@ var result = await ctx.Car
 	
 2)
 I would use cache but for example if we use a memory cache on our API 
-we could have problems because of the instances or if our application is turned off (the data on memory cache are lost) 
-so we could use a distributed type of cache for example on a db on redis
+but we could face problems if we use in-memory cache because multiple instances of app
+or if the app is restarted the data would be lost, so we could implement distributed cache
+for example on a redis database on cloud
 	
 
 3)
