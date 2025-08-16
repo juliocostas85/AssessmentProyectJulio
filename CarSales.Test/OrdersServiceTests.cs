@@ -53,9 +53,9 @@ public class OrdersServiceTests
     }
 
     [Fact]
-    public async Task GetOrders_FilterByDateRange_Inclusive()
+    public async Task GetOrders_FilterByDateRange()
     {
-        using var ctx = BuildContext("GetOrders_FilterByDateRange_Inclusive");
+        using var ctx = BuildContext("GetOrders_FilterByDateRange");
         var svc = new OrdersService(ctx);
 
        
@@ -99,8 +99,11 @@ public class OrdersServiceTests
 
         var result = await svc.GetOrders(null, null, null!, null!, true);
 
+        //with this one I control that the result value match with the right values
         Assert.Equal(new[] { 1, 3 }, result.Select(x => x.OrderId).ToArray());
+        //with this one I control that all the results on result have the flag IsActive = true
         Assert.All(result, x => Assert.True(x.IsActive));
+        
     }
 
     [Fact]
